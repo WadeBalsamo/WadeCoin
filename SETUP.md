@@ -228,23 +228,8 @@ Serves the production build locally for testing before deployment.
 | TypeScript | 5.4.2 | Type-safe JavaScript |
 | RxJS | 7.8.0 | Reactive programming |
 | pnpm | 10.33.4 | Package manager |
-
-## Why This Approach?
-
-### Vite Benefits
-- ✅ **Fast dev server**: Instant HMR (hot module replacement)
-- ✅ **Modern tooling**: ES modules, esbuild bundling
-- ✅ **Smaller bundle**: Better tree-shaking
-- ✅ **Easy configuration**: Simple vite.config.js
-
-### Keeping Angular CLI Compiler
-- ✅ **Type safety**: Leverages Angular's advanced compilation
-- ✅ **Decorator support**: Proper Angular metadata handling
-- ✅ **Zone.js integration**: Automatic change detection
-- ✅ **Proven stable**: Angular 17's compiler is rock-solid
-
+ 
 ### Hybrid Approach
-Combines the best of both worlds:
 1. **Angular CLI** (compiler) for robust, type-safe compilation
 2. **Vite** (dev server) for fast, modern development experience
 3. **API proxy** built into Vite for local backend testing
@@ -254,31 +239,7 @@ Combines the best of both worlds:
 - **Node.js**: 20.19+ or 22.12+ (Vite requirement)
 - **pnpm**: 10.33.4+
 - **Package managers**: Uses pnpm only (enforced via preinstall script)
-
-## Troubleshooting
-
-### Port 4200 Already in Use
-```bash
-lsof -i :4200  # Find process using the port
-kill -9 <PID>  # Kill the process
-```
-
-### Vite HMR Not Working
-- Ensure you're accessing via http://localhost:4200 (not 0.0.0.0)
-- Check browser console for errors
-- Try hard refresh (Ctrl+Shift+R)
-
-### Angular Compilation Errors
-- Check the terminal running `ng build --watch`
-- Fix TypeScript errors in your source files
-- Vite will automatically rebuild on save
-
-### API Proxy Not Working
-- Verify Express API is running on port 8080
-- Check vite.config.js proxy configuration
-- Inspect browser Network tab for proxy errors
-
-## Next Steps
+ 
 
 1. **Start development**: `pnpm dev`
 2. **Open browser**: http://localhost:4200
@@ -294,3 +255,91 @@ kill -9 <PID>  # Kill the process
 - **Dev launcher**: `/root/WadeCoin/artifacts/angular-booking/start.mjs`
 - **Angular config**: `/root/WadeCoin/artifacts/angular-booking/angular.json`
 - **App source**: `/root/WadeCoin/artifacts/angular-booking/src/`
+
+---
+
+## Complete Running Instructions
+
+### Running the Full Stack (Frontend + Backend)
+
+The WadeCoin application consists of two services that must run together:
+
+#### 1. Start the Backend API Server
+
+In a terminal, navigate to the api-server directory:
+
+```bash
+cd /root/WadeCoin/artifacts/api-server
+pnpm dev
+```
+
+This will:
+- Build the Express.js API server using esbuild
+- Start the server on **http://localhost:8080**
+- Enable hot reloading and logging with pino
+- Compile TypeScript to JavaScript
+
+Expected output:
+```
+[timestamp] INFO  listening on port 8080
+```
+
+The API server provides endpoints for:
+- Google Calendar integration (`/api/calendar/*`)
+- Booking management (`/api/bookings/*`)
+- Availability checking (`/api/availability/*`)
+
+#### 2. Start the Frontend Development Server (in another terminal)
+
+From the project root or angular-booking directory:
+
+```bash
+cd /root/WadeCoin
+pnpm --filter @workspace/angular-booking dev
+```
+
+Or directly:
+```bash
+cd /root/WadeCoin/artifacts/angular-booking
+pnpm dev
+```
+
+This will:
+- Start Angular CLI in watch mode
+- Start Vite dev server on **http://localhost:4200**
+- Automatically proxy API requests to http://localhost:8080
+- Enable hot module replacement for fast development
+
+#### 3. Access the Application
+
+Open your browser and navigate to:
+```
+http://localhost:4200
+```
+
+The Angular UI will load and communicate with the API server via the Vite proxy.
+
+### Running Individual Services
+
+**Frontend only** (without backend):
+```bash
+cd /root/WadeCoin/artifacts/angular-booking
+pnpm dev
+```
+
+**Backend only** (API testing via Postman/curl):
+```bash
+cd /root/WadeCoin/artifacts/api-server
+pnpm dev
+```
+
+**Type checking** (without running):
+```bash
+# Check frontend types
+cd /root/WadeCoin/artifacts/angular-booking
+pnpm typecheck
+
+# Check backend types
+cd /root/WadeCoin/artifacts/api-server
+pnpm typecheck
+```

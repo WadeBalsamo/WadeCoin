@@ -1,7 +1,7 @@
 # Implementation Notes - Component Development & Architecture
 
 **The full UI has been implemented and is production-ready.**
-**Smart contracts integration and Google Calendar embed are still on the TODO list.**
+**Smart contracts integration still on the TODO list.**
 
 ---
  

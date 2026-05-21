@@ -26,7 +26,6 @@ export interface AppConfig {
   package_options: PackageOption[];
   mainnet_chain_id: number;
   testnet_chain_id: number;
-  google_calendar_appointment_url: string | null;
 }
 
 function requireEnv(key: string): string {
@@ -77,6 +76,5 @@ export function buildAppConfig(): AppConfig {
     package_options: packageOptions,
     mainnet_chain_id: parseInt(optionalEnv("MAINNET_CHAIN_ID", "1"), 10),
     testnet_chain_id: parseInt(optionalEnv("TESTNET_CHAIN_ID", "11155111"), 10),
-    google_calendar_appointment_url: process.env["GOOGLE_CALENDAR_APPOINTMENT_URL"] ?? null,
   };
 }

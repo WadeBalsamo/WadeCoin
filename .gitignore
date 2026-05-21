@@ -1,3 +1,6 @@
+# my calendar service account
+.env 
+
 # compiled output
 dist
 tmp

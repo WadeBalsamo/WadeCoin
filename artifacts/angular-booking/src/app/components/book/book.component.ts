@@ -1,11 +1,10 @@
 import {
   Component, OnInit, signal, computed, inject,
-  ChangeDetectionStrategy, ChangeDetectorRef,
+  ChangeDetectionStrategy,
 } from '@angular/core';
-import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ConfigService } from '../../services/config.service';
 import { ApiService } from '../../services/api.service';
-import { AppConfig, FormData, BookingMode, PackageOption } from '../../models/booking.models';
+import { AppConfig, FormData, BookingMode, PackageOption, Slot } from '../../models/booking.models';
 import { ModeSelectorComponent } from '../mode-selector/mode-selector.component';
 import { UserFormComponent } from '../user-form/user-form.component';
 import { DiscoveryPaymentComponent } from '../discovery-payment/discovery-payment.component';
@@ -13,6 +12,7 @@ import {
   ConsultingPaymentComponent,
   ConsultingPaymentResult,
 } from '../consulting-payment/consulting-payment.component';
+import { SlotPickerComponent } from '../slot-picker/slot-picker.component';
 
 @Component({
   selector: 'app-book',
@@ -23,6 +23,7 @@ import {
     UserFormComponent,
     DiscoveryPaymentComponent,
     ConsultingPaymentComponent,
+    SlotPickerComponent,
   ],
   template: `
     <div class="section-sm">
@@ -57,16 +58,9 @@ import {
           <!-- ══════════════ DISCOVERY ══════════════ -->
           @if (mode() === 'discovery') {
 
-            <div class="step-label">Step 1 — Check Availability</div>
-            @if (calendarEmbedUrl()) {
-              <div class="card" style="padding:0;overflow:hidden">
-                <iframe
-                  [src]="calendarEmbedUrl()!"
-                  style="width:100%;height:500px;border:none;display:block"
-                  frameborder="0"
-                  scrolling="no">
-                </iframe>
-              </div>
+            <div class="step-label">Step 1 — Pick a Time</div>
+            @if (calendarConfigured()) {
+              <app-slot-picker [durationMinutes]="30" (slotSelected)="selectedSlot.set($event)" />
             } @else {
               <div class="card">
                 <div class="card-title">Pick a Time</div>
@@ -101,31 +95,34 @@ import {
               <div class="card-title">Choose your package</div>
               <div style="display:flex;flex-direction:column;gap:.5rem;margin-top:.25rem">
                 @for (p of config()!.package_options; track p.hours) {
-                  <button
-                    class="btn"
-                    [class.btn-primary]="consPackage()?.hours === p.hours"
-                    [class.btn-secondary]="consPackage()?.hours !== p.hours"
-                    style="text-align:left"
-                    (click)="consPackage.set(p)">
-                    <strong>{{ p.label }}</strong>
-                    <span style="float:right;color:var(--muted)">{{ fmtWade(p.price_wei) }}</span>
-                  </button>
+                  <div>
+                    <button
+                      class="btn"
+                      [class.btn-primary]="consPackage()?.hours === p.hours"
+                      [class.btn-secondary]="consPackage()?.hours !== p.hours"
+                      style="text-align:left;width:100%"
+                      (click)="consPackage.set(p)">
+                      <strong>{{ p.label }}</strong>
+                      <span style="float:right;color:var(--muted)">{{ fmtWade(p.price_wei) }}</span>
+                    </button>
+                    @if (p.allowed_start_hours && p.allowed_start_hours.length > 0) {
+                      <div style="font-size:.75rem;color:var(--muted);margin-top:.2rem;padding:0 .5rem">
+                        Available: {{ formatAvailableHours(p.allowed_start_hours) }}
+                      </div>
+                    }
+                  </div>
                 }
               </div>
             </div>
 
             @if (consPackage()) {
 
-              <div class="step-label">Step 2 — Check Availability</div>
-              @if (calendarEmbedUrl()) {
-                <div class="card" style="padding:0;overflow:hidden">
-                  <iframe
-                    [src]="calendarEmbedUrl()!"
-                    style="width:100%;height:500px;border:none;display:block"
-                    frameborder="0"
-                    scrolling="no">
-                  </iframe>
-                </div>
+              <div class="step-label">Step 2 — Pick a Time</div>
+              @if (calendarConfigured()) {
+                <app-slot-picker
+                  [durationMinutes]="consPackage()!.hours * 60"
+                  [allowedStartHours]="consPackage()!.allowed_start_hours"
+                  (slotSelected)="selectedSlot.set($event)" />
               } @else {
                 <div class="card">
                   <div class="card-title">Pick a Time</div>
@@ -171,8 +168,6 @@ import {
 export class BookComponent implements OnInit {
   private configSvc = inject(ConfigService);
   private apiSvc    = inject(ApiService);
-  private cdr       = inject(ChangeDetectorRef);
-  private sanitizer = inject(DomSanitizer);
 
   config      = signal<AppConfig | null>(null);
   configError = signal<string | null>(null);
@@ -184,29 +179,32 @@ export class BookComponent implements OnInit {
   submitting  = signal(false);
   submitError = signal<string | null>(null);
   done        = signal<{ id: string; msg: string } | null>(null);
+  selectedSlot = signal<Slot | null>(null);
 
-  calendarEmbedUrl = computed((): SafeResourceUrl | null => {
-    const url = this.config()?.google_calendar_appointment_url;
-    if (!url) return null;
-    return this.sanitizer.bypassSecurityTrustResourceUrl(url);
-  });
+  // True when the config loaded successfully — the slot picker will surface
+  // its own error if GOOGLE_CALENDAR_ID / service account aren't configured.
+  calendarConfigured = computed(() => !!this.config());
 
   canSubmitDiscovery = computed(() => {
     if (!this.discTxHash()) return false;
     const f = this.form();
-    return !!(f.name.trim() && f.email.includes('@'));
+    if (!f.name.trim() || !f.email.includes('@')) return false;
+    if (this.calendarConfigured() && !this.selectedSlot()) return false;
+    return true;
   });
 
   canSubmitConsulting = computed(() => {
     const f = this.form();
     if (!f.name.trim() || !f.email.includes('@')) return false;
-    return !!this.consPayment();
+    if (!this.consPayment()) return false;
+    if (this.calendarConfigured() && !this.selectedSlot()) return false;
+    return true;
   });
 
   ngOnInit() {
     this.configSvc.getConfig().subscribe({
-      next:  cfg => { this.config.set(cfg); this.cdr.markForCheck(); },
-      error: err => { this.configError.set(err?.error?.message ?? err?.message ?? 'Network error'); this.cdr.markForCheck(); },
+      next:  cfg => { this.config.set(cfg); },
+      error: err => { this.configError.set(err?.error?.message ?? err?.message ?? 'Network error'); },
     });
   }
 
@@ -216,6 +214,7 @@ export class BookComponent implements OnInit {
     this.consPackage.set(null);
     this.consPayment.set(null);
     this.discTxHash.set(null);
+    this.selectedSlot.set(null);
     this.submitError.set(null);
   }
 
@@ -231,10 +230,22 @@ export class BookComponent implements OnInit {
     } catch { return '? WADE'; }
   }
 
+  formatAvailableHours(hours: number[]): string {
+    const sorted = [...hours].sort((a, b) => a - b);
+    const formatted = sorted.map(h => {
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const hour = h % 12 || 12;
+      return `${hour}${ampm}`;
+    });
+    return formatted.join(' or ');
+  }
+
   submit() {
     const f = this.form(), m = this.mode();
     if (!m) return;
     this.submitting.set(true); this.submitError.set(null);
+
+    const slot = this.selectedSlot();
 
     if (m === 'discovery') {
       this.apiSvc.createBooking({
@@ -243,9 +254,11 @@ export class BookComponent implements OnInit {
         notes:           f.notes.trim() || undefined,
         mode:            m,
         payment_tx_hash: this.discTxHash() ?? undefined,
+        slot_start_utc:  slot?.start_utc,
+        slot_end_utc:    slot?.end_utc,
       }).subscribe({
-        next:  r => { this.done.set({ id: r.booking_id, msg: r.message }); this.submitting.set(false); this.cdr.markForCheck(); },
-        error: e => { this.submitError.set(e?.error?.message ?? 'Booking failed. Please try again.'); this.submitting.set(false); this.cdr.markForCheck(); },
+        next:  r => { this.done.set({ id: r.booking_id, msg: r.message }); this.submitting.set(false); },
+        error: e => { this.submitError.set(e?.error?.message ?? 'Booking failed. Please try again.'); this.submitting.set(false); },
       });
     } else {
       this.apiSvc.createBooking({
@@ -256,9 +269,11 @@ export class BookComponent implements OnInit {
         payment_tx_hash: this.consPayment()?.txHash ?? undefined,
         package_hours:   this.consPayment()?.pkgHours ?? undefined,
         user_address:    this.consPayment()?.walletAddr ?? undefined,
+        slot_start_utc:  slot?.start_utc,
+        slot_end_utc:    slot?.end_utc,
       }).subscribe({
-        next:  r => { this.done.set({ id: r.booking_id, msg: r.message }); this.submitting.set(false); this.cdr.markForCheck(); },
-        error: e => { this.submitError.set(e?.error?.message ?? 'Booking failed. Please try again.'); this.submitting.set(false); this.cdr.markForCheck(); },
+        next:  r => { this.done.set({ id: r.booking_id, msg: r.message }); this.submitting.set(false); },
+        error: e => { this.submitError.set(e?.error?.message ?? 'Booking failed. Please try again.'); this.submitting.set(false); },
       });
     }
   }
@@ -268,6 +283,7 @@ export class BookComponent implements OnInit {
     this.form.set({ name: '', email: '', notes: '', packageHours: null });
     this.consPackage.set(null); this.consPayment.set(null);
     this.discTxHash.set(null);
+    this.selectedSlot.set(null);
     this.submitError.set(null); this.done.set(null);
   }
 }

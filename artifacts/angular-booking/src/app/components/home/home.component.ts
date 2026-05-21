@@ -33,11 +33,11 @@ import {
       <div class="thesis-note">
         <span class="thesis-icon material-icons">warning</span>
         <span>
-          <strong>Not deployed.</strong> The smart contracts are still on
-          testnet, which is genuinely the whole point. The thesis here is that
-          the value of my time a year from now is uncertain enough to be
-          worth pricing in. If I knew exactly how available I'd be, this would
-          just be a calendar app.
+          <strong>Not deployed.</strong> The smart contracts are not deployed,
+          this is genuinely a thought experiment. The thesis here is that the
+          value of my time some years from now is uncertain enough to be worth
+          pricing in. If I knew exactly how available I'd be, this would just be
+          a calendar app. 
         </span>
       </div>
 
@@ -51,10 +51,10 @@ import {
             <p>
               WadeCoin (<em>$WADE</em>) is an ERC-20 token where each token
               equals one hour of consulting work. It trades like a futures
-              contract. If you know you'll need Wade's help in Q3, you
-              can lock in today's rate rather than negotiating later when
-              availability is tighter. The token is on-chain, the commitment is
-              real, and the pricing reflects actual supply.
+              contract. If you know you'll need Wade's help in Q3, you can lock
+              in today's rate rather than negotiating later when availability is
+              tighter. When the token is on-chain, the pricing reflects
+              actual supply.
             </p>
           </div>
         </div>
@@ -109,10 +109,8 @@ import {
               <strong>Contracts:</strong> The <em>Solidity 0.5</em> ERC-20
               contracts to implement the WADE token and a lightweight exchange
               mechanism with on-chain price discovery. Deployment deferred until
-              tokenomics can be calculated. Burning 40 WadeCoin/week. Max
-              Supply 75k ? This project got too existential; how many hours are there
-              in my career? I should choose to spend them wisely, not just to
-              the highest bidder. This exchange is a placeholder for now. 
+              tokenomics can be calculated. Burning 40 WadeCoin/week, and Max Supply
+              75k, an average 40 year career.
             </p>
           </div>
         </div>

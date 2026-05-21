@@ -1,6 +1,6 @@
 import {
-  Component, OnInit, signal, computed, inject,
-  ChangeDetectionStrategy, ChangeDetectorRef,
+  Component, OnInit, signal, inject,
+  ChangeDetectionStrategy,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, ExchangeRate } from '../../services/api.service';
@@ -101,7 +101,6 @@ import { WalletService } from '../../services/wallet.service';
 export class ExchangeComponent implements OnInit {
   private api    = inject(ApiService);
   private wallet = inject(WalletService);
-  private cdr    = inject(ChangeDetectorRef);
 
   rate       = signal<ExchangeRate | null>(null);
   walletAddr = signal<string | null>(null);
@@ -124,22 +123,22 @@ export class ExchangeComponent implements OnInit {
 
   ngOnInit() {
     this.api.getExchangeRate().subscribe({
-      next: r  => { this.rate.set(r); this.cdr.markForCheck(); },
-      error: () => { this.cdr.markForCheck(); },
+      next: r  => { this.rate.set(r); },
+      error: () => {},
     });
   }
 
   async connect() {
     if (!this.wallet.isAvailable()) {
       this.errMsg.set('MetaMask not detected. Install the extension to continue.');
-      this.cdr.markForCheck(); return;
+      return;
     }
-    this.connecting.set(true); this.errMsg.set(null); this.cdr.markForCheck();
+    this.connecting.set(true); this.errMsg.set(null);
     try {
       const accounts = await this.wallet.requestAccounts();
       this.walletAddr.set(accounts[0]);
     } catch (e) { this.errMsg.set(this.wallet.getErrorMessage(e)); }
-    finally { this.connecting.set(false); this.cdr.markForCheck(); }
+    finally { this.connecting.set(false); }
   }
 
   simulate() {
@@ -148,16 +147,16 @@ export class ExchangeComponent implements OnInit {
     if (!addr || !wade) return;
 
     const ethWei = BigInt(Math.round(wade * 0.1 * 1e18)).toString();
-    this.simulating.set(true); this.errMsg.set(null); this.successMsg.set(null); this.cdr.markForCheck();
+    this.simulating.set(true); this.errMsg.set(null); this.successMsg.set(null);
 
     this.api.simulateExchange(addr, String(wade), ethWei).subscribe({
       next: r => {
         this.successMsg.set(`Recorded: ${wade} WADE for ${this.ethAmount()} ETH. ${r.message}`);
-        this.simulating.set(false); this.cdr.markForCheck();
+        this.simulating.set(false);
       },
       error: e => {
         this.errMsg.set(e?.error?.message ?? 'Simulation failed.');
-        this.simulating.set(false); this.cdr.markForCheck();
+        this.simulating.set(false);
       },
     });
   }

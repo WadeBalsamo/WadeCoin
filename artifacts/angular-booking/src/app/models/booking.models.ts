@@ -10,6 +10,7 @@ export interface PackageOption {
   hours: number;
   label: string;
   price_wei: string;
+  allowed_start_hours?: number[];
 }
 
 export interface AppConfig {
@@ -18,7 +19,6 @@ export interface AppConfig {
   wadecoin_mainnet: WadeCoinNetworkConfig;
   wadecoin_testnet: WadeCoinNetworkConfig;
   package_options: PackageOption[];
-  google_calendar_appointment_url: string | null;
 }
 
 export interface BookingRequest {
@@ -29,6 +29,8 @@ export interface BookingRequest {
   mode: string;
   package_hours?: number;
   user_address?: string;
+  slot_start_utc?: string;
+  slot_end_utc?: string;
 }
 
 export interface BookingResponse {
@@ -43,4 +45,11 @@ export interface FormData {
   email: string;
   notes: string;
   packageHours: number | null;
+}
+
+export interface Slot {
+  id: string;
+  start_utc: string;
+  end_utc: string;
+  date: string;
 }

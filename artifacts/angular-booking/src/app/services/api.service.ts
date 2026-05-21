@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { BookingRequest, BookingResponse } from '../models/booking.models';
+import { BookingRequest, BookingResponse, Slot } from '../models/booking.models';
 
 export interface ExchangeRate {
   eth_per_wade: string;
@@ -72,5 +72,13 @@ export class ApiService {
 
   getLogs(): Observable<LogsResponse> {
     return this.http.get<LogsResponse>(`${this.base}/logs`);
+  }
+
+  getAvailability(startDate: string, endDate: string, durationMinutes: number, allowedHours?: number[]): Observable<{ slots: Slot[] }> {
+    const params: Record<string, string> = { start: startDate, end: endDate, duration: String(durationMinutes) };
+    if (allowedHours && allowedHours.length > 0) {
+      params['allowed_hours'] = allowedHours.join(",");
+    }
+    return this.http.get<{ slots: Slot[] }>(`${this.base}/availability`, { params });
   }
 }
