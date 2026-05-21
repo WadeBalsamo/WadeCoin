@@ -10,11 +10,7 @@ npm install --force
 
 created InitializationService that waits for everything to be ready before showing the UI.
 
-this is better but feels hacky. should think about this pattern more.
-
     
-writing this up because the journey is complete and kinda messy.
-
 key insights:
 - read src/services first
 - understand DataService as source of truth
@@ -24,9 +20,7 @@ key insights:
 
 this was a learning experience in blockchain dev. lots of "oh that's why web3.js exists" moments.
 
-angular is actually pretty solid once you understand it. the blockchain part was the hard part, not the framework.
-
-next build: would use similar architecture but maybe less blockchain. 
+angular is solid once its up. the blockchain part was the hard part, not the framework.
 
 ## Notes for later
 

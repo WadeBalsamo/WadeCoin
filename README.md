@@ -19,11 +19,11 @@ Requires Node 18+, backend API on `:8080`, MetaMask for payment flows.
 
 ## Stack
 
-> Angular 17.3, standalone components, strict TypeScript 5.4
-> Angular Signals + RxJS 7.8 
-> `ng build --watch` + Vite 5, orchestrated via `start.mjs`
-> CSS custom properties, no preprocessor
-> MetaMask (`window.ethereum`), manual ERC-20 ABI encoding for testnet
+- Angular 17.3, standalone components, strict TypeScript 5.4 
+- Angular Signals + RxJS 7.8 
+- `ng build --watch` + Vite 5, orchestrated via `start.mjs`
+- CSS custom properties, no preprocessor
+- MetaMask (`window.ethereum`), manual ERC-20 ABI encoding for testnet
 
 ---
 
@@ -58,7 +58,7 @@ All requests and responses are typed via `src/app/models/booking.models.ts`.
 
 ## The Interesting Parts
 
-### The timeslot picker as a derived state showcase
+### The timeslot picker as a derived state
 
 The slot picker fetches a list of available times from the backend and displays them grouped by day. Rather than maintaining separate "which days exist" and "which slots are in the selected day" state manually, both are derived:
 
@@ -121,7 +121,7 @@ Template: `[disabled]="!canSubmitDiscovery() || submitting()"`. Any signal it re
 
 ### Custom build script
 
-`ng serve` wasn't the right tool here. I wanted Angular CLI's compilation (it handles Angular-specific transforms, strict type checking, and build budgets) combined with Vite's fast HMR. So `start.mjs` spawns both as separate processes, but gates Vite startup on Angular's first successful build:
+`ng serve` wasn't the right tool here. I wanted Angular CLI's compilation (it handles Angular-specific transforms, strict type checking, and build budgets) combined with Vite's fast HMR. So `start.mjs` spawns both as separate processes, but gates Vite startup on Angular's first successful build.
 
 
 ## Decisions and tradeoffs
