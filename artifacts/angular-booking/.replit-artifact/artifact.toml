@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "WadeCoin UI Angular"
+version = "1.0.0"
+id = "artifacts/angular-booking"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19178
+
+[services.development]
+run = "pnpm --filter @workspace/angular-booking run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/angular-booking", "run", "build" ]
+publicDir = "artifacts/angular-booking/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19178"
+BASE_PATH = "/"

@@ -1,0 +1,346 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: config
+    description: Configuration
+  - name: booking
+    description: Booking operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /config:
+    get:
+      operationId: getConfig
+      tags: [config]
+      summary: Get application configuration
+      description: Returns all dynamic configuration (token addresses, rates, package options, chain IDs)
+      responses:
+        "200":
+          description: App configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppConfig"
+
+  /available-slots:
+    get:
+      operationId: getAvailableSlots
+      tags: [booking]
+      summary: Get available booking slots
+      description: Returns available slots derived from Google Calendar free/busy data
+      parameters:
+        - name: start_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: "Start of date range (UTC, YYYY-MM-DD)"
+        - name: end_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: "End of date range (UTC, YYYY-MM-DD)"
+        - name: mode
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [discovery, consulting]
+          description: "Booking mode: discovery (30 min) or consulting (60 min)"
+        - name: user_address
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "Wallet address for consulting mode (used to enforce one-per-week rule)"
+      responses:
+        "200":
+          description: Available slots
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AvailableSlotsResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /faucet:
+    post:
+      operationId: requestFaucet
+      tags: [booking]
+      summary: Request testnet WadeCoin from faucet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FaucetRequest"
+      responses:
+        "200":
+          description: Faucet transaction hash
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FaucetResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "503":
+          description: Faucet not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /bookings:
+    post:
+      operationId: createBooking
+      tags: [booking]
+      summary: Create a booking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookingRequest"
+      responses:
+        "201":
+          description: Booking created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: Conflict (slot taken, payment_already_used, weekly limit exceeded, payment invalid)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "503":
+          description: RPC not configured; cannot verify payment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    WadecoinMainnetConfig:
+      type: object
+      properties:
+        contract_address:
+          type: string
+        owner_address:
+          type: string
+        decimals:
+          type: integer
+        hourly_rate_wei:
+          type: string
+          description: "Hourly rate in wei (as a decimal string)"
+      required:
+        - contract_address
+        - owner_address
+        - decimals
+        - hourly_rate_wei
+
+    WadecoinTestnetConfig:
+      type: object
+      properties:
+        contract_address:
+          type: string
+        owner_address:
+          type: string
+        decimals:
+          type: integer
+        faucet_amount_wei:
+          type: string
+          description: "Faucet drip amount in wei (as a decimal string)"
+        payment_amount_wei:
+          type: string
+          description: "Optional discovery call payment amount in wei (as a decimal string)"
+      required:
+        - contract_address
+        - owner_address
+        - decimals
+        - faucet_amount_wei
+        - payment_amount_wei
+
+    PackageOption:
+      type: object
+      properties:
+        hours:
+          type: integer
+        label:
+          type: string
+        price_wei:
+          type: string
+          description: "Total price for this package in wei (as a decimal string)"
+      required:
+        - hours
+        - label
+        - price_wei
+
+    AppConfig:
+      type: object
+      properties:
+        wadecoin_mainnet:
+          $ref: "#/components/schemas/WadecoinMainnetConfig"
+        wadecoin_testnet:
+          $ref: "#/components/schemas/WadecoinTestnetConfig"
+        package_options:
+          type: array
+          items:
+            $ref: "#/components/schemas/PackageOption"
+        mainnet_chain_id:
+          type: integer
+        testnet_chain_id:
+          type: integer
+      required:
+        - wadecoin_mainnet
+        - wadecoin_testnet
+        - package_options
+        - mainnet_chain_id
+        - testnet_chain_id
+
+    Slot:
+      type: object
+      properties:
+        id:
+          type: string
+        start_utc:
+          type: string
+          format: date-time
+        end_utc:
+          type: string
+          format: date-time
+        date:
+          type: string
+      required:
+        - id
+        - start_utc
+        - end_utc
+        - date
+
+    AvailableSlotsResponse:
+      type: object
+      properties:
+        slots:
+          type: array
+          items:
+            $ref: "#/components/schemas/Slot"
+      required:
+        - slots
+
+    FaucetRequest:
+      type: object
+      properties:
+        address:
+          type: string
+      required:
+        - address
+
+    FaucetResponse:
+      type: object
+      properties:
+        tx_hash:
+          type: string
+      required:
+        - tx_hash
+
+    BookingRequest:
+      type: object
+      properties:
+        slot_id:
+          type: string
+        user_name:
+          type: string
+        user_email:
+          type: string
+          format: email
+        notes:
+          type: string
+          nullable: true
+        payment_tx_hash:
+          type: string
+          nullable: true
+        mode:
+          type: string
+          enum: [discovery, consulting]
+        package_hours:
+          type: integer
+          nullable: true
+        user_address:
+          type: string
+          nullable: true
+          description: "Wallet address for consulting mode"
+      required:
+        - slot_id
+        - user_name
+        - user_email
+        - mode
+
+    BookingResponse:
+      type: object
+      properties:
+        booking_id:
+          type: string
+        message:
+          type: string
+      required:
+        - booking_id
+        - message
+
+    ApiError:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      required:
+        - code
+        - message
