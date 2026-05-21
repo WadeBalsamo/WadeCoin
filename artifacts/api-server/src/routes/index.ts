@@ -5,6 +5,7 @@ import faucetRouter from "./faucet";
 import bookingsRouter from "./bookings";
 import exchangeRouter from "./exchange";
 import logsRouter from "./logs";
+import availabilityRouter from "./availability";
 
 const router: IRouter = Router();
 
@@ -14,5 +15,6 @@ router.use(faucetRouter);
 router.use(bookingsRouter);
 router.use(exchangeRouter);
 router.use(logsRouter);
+router.use(availabilityRouter);
 
 export default router;

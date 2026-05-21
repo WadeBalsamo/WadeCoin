@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { verifyErc20Transfer } from "../services/wallet";
 import { buildAppConfig } from "../services/config";
 import { sendBookingNotification } from "../services/email";
+import { createCalendarEvent } from "../services/googleCalendar";
 import { logger } from "../lib/logger";
 import { ethers } from "ethers";
 import { z } from "zod";
@@ -34,6 +35,8 @@ const BookingRequestSchema = z.object({
   mode: z.enum(["discovery", "consulting"]),
   package_hours: z.number().int().positive().nullable().optional(),
   user_address: z.string().nullable().optional(),
+  slot_start_utc: z.string().nullable().optional(),
+  slot_end_utc: z.string().nullable().optional(),
 });
 
 router.post("/bookings", async (req: Request, res: Response): Promise<void> => {
@@ -87,7 +90,7 @@ router.post("/bookings", async (req: Request, res: Response): Promise<void> => {
         return;
       }
 
-      const slotId = `disc_${body.payment_tx_hash}`;
+      const slotId = body.slot_start_utc ?? `disc_${body.payment_tx_hash}`;
 
       const [booking] = await db
         .insert(bookingsTable)
@@ -102,6 +105,9 @@ router.post("/bookings", async (req: Request, res: Response): Promise<void> => {
           user_address: normalizedAddress,
         })
         .returning();
+
+      const calendarSummary = `Discovery Call — ${booking.user_name}`;
+      const calendarDesc = booking.notes ? `Notes: ${booking.notes}` : undefined;
 
       Promise.all([
         sendBookingNotification({
@@ -125,11 +131,22 @@ router.post("/bookings", async (req: Request, res: Response): Promise<void> => {
           booking_id: booking.id,
           notes: booking.notes,
         }),
+        ...(body.slot_start_utc && body.slot_end_utc
+          ? [createCalendarEvent({
+              summary: calendarSummary,
+              description: calendarDesc,
+              startUtc: body.slot_start_utc,
+              endUtc: body.slot_end_utc,
+              attendeeEmail: booking.user_email,
+            }).catch((err) => logger.error({ err }, "Failed to create calendar event"))]
+          : []),
       ]).catch((err) => logger.error({ err }, "Post-booking async tasks failed"));
 
       res.status(201).json({
         booking_id: booking.id,
-        message: "Discovery call booked. Wade will confirm your preferred time shortly.",
+        message: body.slot_start_utc
+          ? "Discovery call booked! A calendar invite has been sent to your email."
+          : "Discovery call booked. Wade will confirm your preferred time shortly.",
       });
       return;
     }
@@ -182,7 +199,7 @@ router.post("/bookings", async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const slotId = `cons_${body.payment_tx_hash}`;
+    const slotId = body.slot_start_utc ?? `cons_${body.payment_tx_hash}`;
 
     const [booking] = await db
       .insert(bookingsTable)
@@ -197,6 +214,12 @@ router.post("/bookings", async (req: Request, res: Response): Promise<void> => {
         user_address: normalizedAddress,
       })
       .returning();
+
+    const pkgLabel = body.package_hours ? `${body.package_hours}h Consulting` : "Consulting";
+    const calendarDesc = [
+      body.package_hours ? `Package: ${body.package_hours} hours` : null,
+      booking.notes ? `Notes: ${booking.notes}` : null,
+    ].filter(Boolean).join("\n") || undefined;
 
     Promise.all([
       sendBookingNotification({
@@ -220,11 +243,22 @@ router.post("/bookings", async (req: Request, res: Response): Promise<void> => {
         booking_id: booking.id,
         notes: booking.notes,
       }),
+      ...(body.slot_start_utc && body.slot_end_utc
+        ? [createCalendarEvent({
+            summary: `${pkgLabel} — ${booking.user_name}`,
+            description: calendarDesc,
+            startUtc: body.slot_start_utc,
+            endUtc: body.slot_end_utc,
+            attendeeEmail: booking.user_email,
+          }).catch((err) => logger.error({ err }, "Failed to create calendar event"))]
+        : []),
     ]).catch((err) => logger.error({ err }, "Post-booking async tasks failed"));
 
     res.status(201).json({
       booking_id: booking.id,
-      message: "Booking confirmed! Wade will be in touch to schedule your session.",
+      message: body.slot_start_utc
+        ? "Booking confirmed! A calendar invite has been sent to your email."
+        : "Booking confirmed! Wade will be in touch to schedule your session.",
     });
   } catch (err) {
     const uniqueErr = handleDbUniqueViolation(err);

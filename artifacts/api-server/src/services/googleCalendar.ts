@@ -1,6 +1,14 @@
 import { google } from "googleapis";
 import { logger } from "../lib/logger";
 
+export interface CalendarEventInput {
+  summary: string;
+  description?: string;
+  startUtc: string;
+  endUtc: string;
+  attendeeEmail: string;
+}
+
 export interface BusyInterval {
   start: string;
   end: string;
@@ -82,6 +90,7 @@ function computeDailySlotsFromBusy(
   dateStr: string,
   busyIntervals: BusyInterval[],
   slotDurationMinutes: number,
+  allowedStartHours?: number[],
 ): Slot[] {
   const { start: workStart, end: workEnd } = getWorkingHours();
   const slots: Slot[] = [];
@@ -103,12 +112,15 @@ function computeDailySlotsFromBusy(
 
   while (cursor + slotMs <= dayEnd.getTime()) {
     const slotEnd = cursor + slotMs;
+    const slotStartHour = new Date(cursor).getUTCHours();
 
     const overlaps = busyParsed.some(
       (busy) => cursor < busy.end && slotEnd > busy.start,
     );
 
-    if (!overlaps) {
+    const isAllowedHour = !allowedStartHours || allowedStartHours.includes(slotStartHour);
+
+    if (!overlaps && isAllowedHour) {
       const startIso = new Date(cursor).toISOString();
       const endIso = new Date(slotEnd).toISOString();
       slots.push({
@@ -130,6 +142,7 @@ export async function getAvailableSlots(
   endDate: string,
   slotDurationMinutes: number,
   excludedDates?: Set<string>,
+  allowedStartHours?: number[],
 ): Promise<Slot[]> {
   const busy = await getFreeBusy(startDate, endDate);
 
@@ -152,6 +165,7 @@ export async function getAvailableSlots(
         dateStr,
         dayBusy,
         slotDurationMinutes,
+        allowedStartHours,
       );
       slots.push(...daySlots);
     }
@@ -160,4 +174,51 @@ export async function getAvailableSlots(
   }
 
   return slots;
+}
+
+function getAuth(scopes: string[]) {
+  const serviceAccountKeyRaw = process.env["GOOGLE_SERVICE_ACCOUNT_KEY"];
+  if (!serviceAccountKeyRaw) {
+    const err = new Error("GOOGLE_SERVICE_ACCOUNT_KEY is required");
+    (err as NodeJS.ErrnoException).code = "calendar_unconfigured";
+    throw err;
+  }
+  let credentials: object;
+  try {
+    credentials = JSON.parse(serviceAccountKeyRaw);
+  } catch {
+    const err = new Error("GOOGLE_SERVICE_ACCOUNT_KEY is not valid JSON");
+    (err as NodeJS.ErrnoException).code = "calendar_unconfigured";
+    throw err;
+  }
+  return new google.auth.GoogleAuth({ credentials, scopes });
+}
+
+export async function createCalendarEvent(input: CalendarEventInput): Promise<string> {
+  const calendarId = process.env["GOOGLE_CALENDAR_ID"];
+  if (!calendarId) {
+    const err = new Error("GOOGLE_CALENDAR_ID is required to create calendar events");
+    (err as NodeJS.ErrnoException).code = "calendar_unconfigured";
+    throw err;
+  }
+
+  const auth = getAuth(["https://www.googleapis.com/auth/calendar.events"]);
+  const calendar = google.calendar({ version: "v3", auth });
+
+  const event = await calendar.events.insert({
+    calendarId,
+    sendUpdates: "all",
+    requestBody: {
+      summary: input.summary,
+      description: input.description,
+      start: { dateTime: input.startUtc, timeZone: "UTC" },
+      end: { dateTime: input.endUtc, timeZone: "UTC" },
+      attendees: [{ email: input.attendeeEmail }],
+      status: "confirmed",
+    },
+  });
+
+  const eventId = event.data.id ?? "";
+  logger.info({ eventId, attendee: input.attendeeEmail }, "Calendar event created");
+  return eventId;
 }

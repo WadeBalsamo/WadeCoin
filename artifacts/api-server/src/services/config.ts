@@ -17,6 +17,7 @@ export interface PackageOption {
   hours: number;
   label: string;
   price_wei: string;
+  allowed_start_hours?: number[];
 }
 
 export interface AppConfig {
@@ -49,12 +50,14 @@ export function buildAppConfig(): AppConfig {
   const rawPackages = JSON.parse(rawPackageOptions) as Array<{
     hours: number;
     label: string;
+    allowed_start_hours?: number[];
   }>;
 
   const packageOptions: PackageOption[] = rawPackages.map((pkg) => ({
     hours: pkg.hours,
     label: pkg.label,
     price_wei: (BigInt(pkg.hours) * BigInt(hourlyRateWei)).toString(),
+    allowed_start_hours: pkg.allowed_start_hours,
   }));
 
   return {
