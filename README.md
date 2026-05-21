@@ -6,14 +6,24 @@ Built in Angular 17. The blockchain payment flow works on real Ethereum testnet 
 
 ## Quick Start
 
+This is a monorepo managed with pnpm workspaces. The frontend (Angular + Vite) and backend (Express API) run as separate services.
+
 ```bash
-npm install
-npm run dev       # ng build --watch + Vite dev server → http://localhost:4200
-npm run build     # production build → dist/browser/
-npm run typecheck # tsc --noEmit
+# Install dependencies (pnpm required; see SETUP.md for full details)
+pnpm install
+
+# Terminal 1: Start the backend API server (runs on :8080)
+cd artifacts/api-server
+pnpm dev
+
+# Terminal 2: Start the frontend dev server (runs on :4200)
+cd artifacts/angular-booking
+pnpm dev
 ```
 
-Requires Node 18+, backend API on `:8080`, MetaMask for payment flows.
+Then open http://localhost:4200 in your browser. The frontend automatically proxies API requests to the backend.
+
+Requires Node 20+, pnpm, MetaMask for payment flows. See [SETUP.md](./SETUP.md) for detailed setup and architecture.
 
 ---
 
