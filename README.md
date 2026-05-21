@@ -43,9 +43,9 @@ The app uses Angular 17's standalone components, signals, the `@if`/`@for` templ
 
 **Standalone components** mean each component declares its own imports. You can understand a component's dependencies without hunting through a module file. The tree-shaker only bundles what's actually used, and lazy loading is trivial.
 
-**OnPush change detection** is on every component. Angular skips re-rendering a component unless its inputs changed, an event fired, or an observable emitted. The catch: when you write to a signal inside an RxJS `subscribe()` callback, you have to call `cdr.markForCheck()` manually — OnPush doesn't know the async result came in. It's a small tax that pays off across the whole tree.
+**OnPush change detection** is on every component. Angular skips re-rendering a component unless its inputs changed, an event fired, or an observable emitted. The catch: when you write to a signal inside an RxJS `subscribe()` callback, you have to call `cdr.markForCheck()` manually OnPush doesn't know the async result came in. It's a small tax that pays off across the whole tree.
 
-**Signals for state, computed for derived state.** Component state that would have been a `BehaviorSubject` is now a `signal()`. Where you'd have written `.pipe(combineLatest, map)` chains, you write `computed()` — memoized, automatically tracked, much easier to follow.
+**Signals for state, computed for derived state.** Component state that would have been a `BehaviorSubject` is now a `signal()`. Where you'd have written `.pipe(combineLatest, map)` chains, you write `computed()` memoized, automatically tracked, much easier to follow.
 
 
 ---
